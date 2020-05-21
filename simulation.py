@@ -8,12 +8,13 @@ from newEKF import newEKF
 import transform
 
 show_animation = True
-np.random.seed(19910620) # seed the random number generator for reproducibility
-border = {"xmin":-4, "xmax":4, "ymin":-4, "ymax":4, "zmin":0, "zmax":4}
-numRob = 4 # number of robots
+np.random.seed(19) # seed the random number generator for reproducibility
+
+border = {"xmin":-8, "xmax":8, "ymin":-8, "ymax":8, "zmin":0, "zmax":4}
+numRob = 11 # number of robots
 dt = 0.01 # time interval [s]
 simTime = 70.0 # simulation time [s]
-maxVel = 1 # maximum velocity [m/s]
+maxVel = 2 # maximum velocity [m/s]
 devInput = np.array([[0.25, 0.25, 0.01]]).T # input deviation in simulation, Vx[m/s], Vy[m/s], yawRate[rad/s]
 devObser = 0.1 # observation deviation of distance[m]
 ekfStride = 1 # update interval of EKF is simStride*0.01[s]
@@ -32,20 +33,35 @@ estiEKF = newEKF(10, 0.1, 0.25, 0.4, 0.1, numRob)
 
 def animate(step):
     global xTrue, relativeState, xEsti
-    
     u = data.calcInput_FlyIn1m(step)#
-    xTrue, zNois, uNois = data.update(xTrue, u)
-    
+    # xTrue[0:2,0] = 0
+    # u[:,:] = 0
+    xTrue, zNois, uNois = data.update2(xTrue, u)
+
     if step == 0:
-        #relativeState = relativeEKF.EKF(uNois, zNois, relativeState, ekfStride)
-        #xEsti = transform.calcAbsPosUseRelaPosWRTRob0(xTrue[:,0], relativeState, xTrue, numRob) 
-        xEsti = xTrue
+        relativeState = relativeEKF.EKF(uNois, zNois, relativeState, ekfStride)
+        xEsti = transform.calcAbsPosUseRelaPosWRTRob0(xTrue[:,0], relativeState, xTrue, numRob)
+        # xEsti[0:2,:] = -8
+        # xEsti = xTrue
     if step % ekfStride == 0:
-        xEsti = estiEKF.nEKF(uNois, zNois, xEsti, ekfStride, 0)
+        # xEsti = estiEKF.nEKF(uNois, zNois, xEsti, ekfStride, 0)
+        xEsti[0:2,0] = xTrue[0:2,0]
+
         xEsti = estiEKF.nEKF(uNois, zNois, xEsti, ekfStride, 1)
+        # xEsti[0:2, 1] = xTrue[0:2, 1]
+
         xEsti = estiEKF.nEKF(uNois, zNois, xEsti, ekfStride, 2)
+        # xEsti[0:2, 2] = xTrue[0:2, 2]
+
         xEsti = estiEKF.nEKF(uNois, zNois, xEsti, ekfStride, 3)
-       
+        xEsti = estiEKF.nEKF(uNois, zNois, xEsti, ekfStride, 4)
+        xEsti = estiEKF.nEKF(uNois, zNois, xEsti, ekfStride, 5)
+        xEsti = estiEKF.nEKF(uNois, zNois, xEsti, ekfStride, 6)
+        xEsti = estiEKF.nEKF(uNois, zNois, xEsti, ekfStride, 7)
+        xEsti = estiEKF.nEKF(uNois, zNois, xEsti, ekfStride, 8)
+        xEsti = estiEKF.nEKF(uNois, zNois, xEsti, ekfStride, 9)
+        xEsti = estiEKF.nEKF(uNois, zNois, xEsti, ekfStride, 10)
+
     pointsTrue.set_data(xTrue[0, :], xTrue[1, :]) # plot groundTruth points
     pointsEsti.set_data(xEsti[0, :], xEsti[1, :]) # plot estimated points
     
@@ -76,7 +92,7 @@ if show_animation:
     ax.add_patch(circle)
     time_text = ax.text(0.01, 0.97, '', transform=ax.transAxes)
     time_text.set_text('')
-    ani = animation.FuncAnimation(fig, animate, frames=None, interval=10, blit=True)
+    ani = animation.FuncAnimation(fig, animate, frames=None, interval=1, blit=True)
     #ani.save('particle_box.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
     plt.show()   
 else:

@@ -16,7 +16,7 @@ import transform
 # Simulation settings
 show_animation = True  # True: animation; Flase: figure
 np.random.seed(19910620) # seed the random number generator for reproducibility
-border = {"xmin":-4, "xmax":4, "ymin":-4, "ymax":4, "zmin":0, "zmax":4}
+border = {"xmin":-8, "xmax":8, "ymin":-8, "ymax":8, "zmin":0, "zmax":4}
 numRob = 4 # number of robots
 dt = 0.01 # time interval [s]
 simTime = 70.0 # simulation time [s]
@@ -27,6 +27,7 @@ ekfStride = 1 # update interval of EKF is simStride*0.01[s]
 
 # Variables being updated in simulation
 xTrue = np.random.uniform(-3, 3, (3, numRob)) # random initial groundTruth of state [x, y, yaw]' of numRob robots
+# xTrue =np.array([[0,0,0],[0,2,0],[2,2,0],[2,0,0]]).T
 relativeState = np.zeros((3, numRob, numRob)) # [x_ij, y_ij, yaw_ij]' of the second robot in the first robot's view
 data = dataCreate(numRob, border, maxVel, dt, devInput, devObser) #Create input data such as velocities, yaw rates, distances...
 relativeEKF = EKFonSimData(10, 0.1, 0.25, 0.4, 0.1, numRob)#def __init__(self, Pxy, Pr, Qxy, Qr, Rd, numRob)
@@ -76,7 +77,7 @@ if show_animation:
     ax.add_patch(circle)
     time_text = ax.text(0.01, 0.97, '', transform=ax.transAxes)
     time_text.set_text('')
-    ani = animation.FuncAnimation(fig, animate, frames=None, interval=10, blit=True)
+    ani = animation.FuncAnimation(fig, animate, frames=None, interval=1, blit=True)
     #ani.save('particle_box.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
     plt.show()   
 else:
