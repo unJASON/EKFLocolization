@@ -4,7 +4,7 @@ import matplotlib.animation as animation
 import mpl_toolkits.mplot3d.axes3d as p3
 from light_house_create import dataCreate
 
-from SwarmEKF import swarmEKF
+from SwarmEKF2 import swarmEKF
 
 show_animation = True
 np.random.seed(16) # seed the random number generator for reproducibility
@@ -18,9 +18,6 @@ maxVel = 2 # maximum velocity [m/s]
 devInput = np.array([[0.25, 0.25, 0.01]]).T # input deviation in simulation, Vx[m/s], Vy[m/s], yawRate[rad/s]
 devObser = 0.1 # observation deviation of distance[m]
 ekfStride = 1 # update interval of EKF is simStride*0.01[s]
-#1.首先A中调用EKF，先求BCD的估计坐标
-#2.其次B调用newEKF利用ACD求出自己的坐标
-#3.CDAB循环
 
 #初始化
 xTrue = np.random.uniform(-5, 5, (dimension, numRob)) # random initial groundTruth of state [x, y, yaw]' of numRob robots
@@ -30,17 +27,11 @@ estiEKF = swarmEKF(10, 0.1, 0.25, 0.4, 0.1, numRob,dt=dt,dimension=dimension,lig
 
 xTrue[:,0] = [0,0]
 xTrue[:,1] = [1,1]
-# xTrue[:,2] = [2,0]
-
-xEsti = np.random.uniform(-5, 5,(dimension, numRob))
-# xEsti = xTrue
-# xEsti = np.zeros(shape=xTrue.shape)
-# xEsti[:,0] = xTrue[:,0]
-# xEsti[:,1] = xTrue[:,1]
-# xEsti[:,2] = xTrue[:,2]
-
+xEsti = np.random.uniform(-5, 5,(dimension*2, numRob))
+# xEsti[dimension:,:] = 0
+# xEsti[:dimension,:] = xTrue
 def goRec(u,step):
-    cycle = 1000
+    cycle = 1500
     vel = -1
     if step % cycle < cycle * 0.25:
         u[:, 1] = [vel, 0]
@@ -57,25 +48,29 @@ def goRec(u,step):
     u[:,2:] = 0
     return u
 def animate(step):
-    global xTrue, relativeState, xEsti,estiEKF
+    global xTrue, relativeState, xEsti,estiEKF,Pmatrix
     u = data.calcInput_FlyIn1m(step)
-    u = goRec(u,step)
+    # u = goRec(u,step)
+
     xTrue, zNois, uNois = data.update(xTrue, u)
 
     if step % ekfStride == 0:
-        for i in range(numRob):
-            # xEsti = estiEKF.EKF(uNois, zNois, xEsti,xTrue, ekfStride, i)
-            # xEsti = estiEKF.dualEKF(uNois, zNois, xEsti, xTrue, ekfStride, i)
-            # xEsti = estiEKF.CovEKF(uNois, zNois, xEsti, xTrue, ekfStride, i)
-            # xEsti = estiEKF.rdEKF(uNois, zNois, xEsti, xTrue, ekfStride, i)
-            xEsti = estiEKF.anchorEKF(uNois, zNois, xEsti, xTrue, ekfStride, i)
-    pointsTrue.set_data(xTrue[0, :], xTrue[1, :])  # plot groundTruth points
-    pointsEsti.set_data(xEsti[0, :], xEsti[1, :])  # plot estimated points
+        #生成一个随机排列 然后作为后者的某个列表加入
+        # permu = np.random.permutation(numRob).tolist()
+        # for ele in lighthouse_Idx:
+        #     permu.remove(ele)
+        # permu = lighthouse_Idx + permu
 
-    # pointsTrueHead.set_data(xTrue[0, :] + 0.07 * np.cos(xTrue[2, :]),
-    #                         xTrue[1, :] + 0.07 * np.sin(xTrue[2, :]))  # heading
-    # pointsEstiHead.set_data(xEsti[0, :] + 0.07 * np.cos(xEsti[2, :]),
-    #                         xEsti[1, :] + 0.07 * np.sin(xEsti[2, :]))  # heading
+        reference_list = []
+        for i in range(numRob):
+            xEsti = estiEKF.CovEKF(uNois, zNois, xEsti, xTrue, ekfStride, i)
+            # xEsti = estiEKF.CovEKF2(uNois, zNois, xEsti, xTrue, ekfStride, i, reference_list)
+            # reference_list.append(i)
+            # print(i, estiEKF.Pmatrix[i, 0, 0],estiEKF.Pmatrix[i, 1, 1],estiEKF.Pmatrix[i, 2, 2],estiEKF.Pmatrix[i, 3, 3])
+            # print(i,"true:", xTrue[:,i], "est:",xEsti[0:2, i]," ",xEsti[0+dimension:2+dimension,i])
+    pointsTrue.set_data(xTrue[0, :], xTrue[1, :])  # plot groundTruth points
+    pointsEsti.set_data(xEsti[0, :]+xEsti[0+dimension,:], xEsti[1, :]+xEsti[1+dimension,:])  # plot estimated points
+
 
     circle.center = (xTrue[0, 0], xTrue[1, 0])
     circle.radius = zNois[0, 1]  # plot a circle to show the distance between robot 0 and robot 1
@@ -92,7 +87,7 @@ def animate3D(step):
     if step % ekfStride == 0:
         for i in range(numRob):
             # xEsti = estiEKF.EKF(uNois, zNois, xEsti,xTrue, ekfStride, i)
-            xEsti = estiEKF.dualEKF(uNois, zNois, xEsti, xTrue, ekfStride, i)
+            xEsti = estiEKF.CovEKF(uNois, zNois, xEsti, xTrue, ekfStride, i)
             # xEsti = estiEKF.anchorEKF(uNois, zNois, xEsti, xTrue, ekfStride, i)
     pointsTrue = ax.scatter(xTrue[0, :], xTrue[1, :],xTrue[2,:], c="b")  # plot groundTruth points
     pointsEsti = ax.scatter(xEsti[0, :], xEsti[1, :],xEsti[2,:], c="r")  # plot estimated points
@@ -120,8 +115,8 @@ if show_animation:
 
         time_text = ax.text(0.01, 0.97, '', transform=ax.transAxes)
         time_text.set_text('')
-        ani = animation.FuncAnimation(fig, animate, frames=None, interval=1, blit=True)
         #ani.save('particle_box.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
+        ani = animation.FuncAnimation(fig, animate,init_func=None, frames=None, interval=1, blit=True)
         plt.show()
     elif dimension == 3:
         fig = plt.figure()

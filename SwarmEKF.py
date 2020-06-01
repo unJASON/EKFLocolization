@@ -357,15 +357,17 @@ class swarmEKF:
 
         #adding light house_gain
         statPred,PPred = self.lighthouse_Gain(droneID, statPred, PPred, xTrue)
-
-        # add drone gain
-        choice_list =np.random.choice(range(1, self.numRob), np.random.randint(2,3),replace=False).tolist()
-        for i in choice_list:
-        # for i in range(self.numRob):
-            if i != droneID:
-                statPred, PPred = self.drone_Gain(droneID, statPred, PPred, i, Esti, zNois)
-            else:
-                pass
+        if droneID not in self.lighthouse_Idx:
+        # if True:
+            # add drone gain
+            # choice_list =np.random.choice(range(1, self.numRob), np.random.randint(2,3),replace=False).tolist()
+            # for i in choice_list:
+            for i in range(self.numRob):
+                # if i != droneID:
+                if i != droneID and i in self.lighthouse_Idx:
+                    statPred, PPred = self.drone_Gain(droneID, statPred, PPred, i, Esti, zNois)
+                else:
+                    pass
         # for i in range(np.random.randint(1,self.numRob//2)):
         Esti[:, droneID] = statPred[:]
         self.Pmatrix[droneID, :, :] = PPred
@@ -403,7 +405,10 @@ class swarmEKF:
         K = combine_P @ jacoH.T @ np.linalg.inv(S)
         K = K.reshape([K.shape[0], 1])
         combine_stat=combine_stat.tolist()
-        combine_stat = combine_stat[:] + K @ resErr  # 公式9 （2）
+        if reference_Drone in self.lighthouse_Idx:
+            combine_stat = combine_stat[:] + K @ resErr  # 公式9 （2）
+        else:
+            combine_stat = combine_stat[:] + K @ resErr  # 公式9 （2）
         jacoH = jacoH.reshape([1,jacoH.shape[0]])
         combine_P = (np.eye(len(combine_stat)) - K @ jacoH) @ combine_P
         return combine_stat[:self.dimension],combine_P[:self.dimension,:self.dimension]

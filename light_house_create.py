@@ -61,7 +61,7 @@ class dataCreate:
     def calcInput_FlyIn1m(self, step):
     # Calculate control inputs [vx, vy, yaw_rate]' of all robots such that
     # all robots fly randomly within 1m range
-        if (step % 100) == 0:
+        if (step % 100)== 0:
             if (step % 200) == 0:
                 self.velocity = -self.velocity
             else:
